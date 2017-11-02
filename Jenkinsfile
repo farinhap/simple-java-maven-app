@@ -1,37 +1,42 @@
-#!groovy
-
 pipeline {
-    agent any
-
-    stages {
-         stage('Preparation') { 
-            steps {
-                echo 'nothing to do'
+  agent any
+  stages {
+    stage('Preparation') {
+      steps {
+        echo 'nothing to do'
+      }
+    }
+    stage('Build') {
+      steps {
+        withEnv(overrides: ["PATH+MAVEN=${tool 'M3'}/bin"]) {
+          sh 'mvn -B -DskipTests clean package'
+        }
+        
+      }
+    }
+    stage('Unit Test') {
+      parallel {
+        stage('Unit Test') {
+          steps {
+            withEnv(overrides: ["PATH+MAVEN=${tool 'M3'}/bin"]) {
+              sh 'mvn test'
             }
-        }//nd stage prep
-       
-        stage('Build') { 
-            steps {
-                withEnv(["PATH+MAVEN=${tool 'M3'}/bin"]) {
-                // sh "mvn --batch-mode -V -U -e clean deploy -Dsurefire.useFile=false"
-                sh 'mvn -B -DskipTests clean package' 
-                }
-            }                
-        }//nd stage build
-
-        stage('Unit Test') { 
-            steps {
-               withEnv(["PATH+MAVEN=${tool 'M3'}/bin"]) {
-                // sh "mvn --batch-mode -V -U -e clean deploy -Dsurefire.useFile=false"
-                sh 'mvn test' 
-               }
+            
+          }
+          post {
+            always {
+              junit 'target/surefire-reports/*.xml'
+              
             }
-            post {
-                always{
-                    junit 'target/surefire-reports/*.xml'
-                }
-            } 
-        }//end unit test
-
-    }//end stages
+            
+          }
+        }
+        stage('Code Analysis') {
+          steps {
+            tool 'kiuwan'
+          }
+        }
+      }
+    }
+  }
 }
